@@ -9,6 +9,15 @@
         <v-text-field v-model="price" label="Precio (ARS)" type="number" required />
         <v-text-field v-model="imageUrl" label="Imagen (URL)" required />
 
+        <v-select
+          v-model="categoryId"
+          :items="categories"
+          item-title="name"
+          item-value="id"
+          label="Categoría"
+          required
+        />
+
         <v-btn type="submit" color="primary" class="mt-4">Guardar cambios</v-btn>
       </v-form>
 
@@ -31,26 +40,30 @@ const title = ref('')
 const description = ref('')
 const price = ref('')
 const imageUrl = ref('')
+const categoryId = ref('')
+const categories = ref([])
 const loaded = ref(false)
 
 onMounted(async () => {
   try {
-    const res = await axios.get(`http://localhost:8080/products/${route.params.id}`, {
-      headers: {
-        Authorization: `Bearer ${auth.token}`,
-      },
-    })
+    const [productRes, categoriesRes] = await Promise.all([
+      axios.get(`http://localhost:8080/products/${route.params.id}`, {
+        headers: { Authorization: `Bearer ${auth.token}` }
+      }),
+      axios.get('http://localhost:8080/categories')
+    ])
 
-    console.log('[DEBUG] Producto cargado:', res.data)
-
-    const product = res.data
+    const product = productRes.data
     title.value = product.title
     description.value = product.description
     price.value = product.price
     imageUrl.value = product.image_url
+    categoryId.value = product.category_id
+    categories.value = categoriesRes.data
+
     loaded.value = true
   } catch (err) {
-    console.error('Error al cargar producto:', err)
+    console.error('Error al cargar producto o categorías:', err)
   }
 })
 
@@ -61,10 +74,9 @@ const handleSubmit = async () => {
       description: description.value,
       price: parseFloat(price.value),
       image_url: imageUrl.value,
+      category_id: categoryId.value || null,
     }, {
-      headers: {
-        Authorization: `Bearer ${auth.token}`,
-      },
+      headers: { Authorization: `Bearer ${auth.token}` },
     })
     router.push('/dashboard')
   } catch (err) {
